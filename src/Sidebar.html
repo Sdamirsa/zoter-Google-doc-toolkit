@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+  body { font-family: Roboto, Arial, sans-serif; font-size: 13px; padding: 10px; }
+  button { display: block; width: 100%; padding: 8px; margin: 6px 0; cursor: pointer; }
+  .primary { background: #1a73e8; color: white; border: none; border-radius: 4px; }
+  .secondary { background: #f1f3f4; border: 1px solid #dadce0; border-radius: 4px; }
+  #status { margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; min-height: 40px; white-space: pre-wrap; font-family: monospace; font-size: 11px; }
+  .ok { color: #137333; }
+  .err { color: #c5221f; }
+  h3 { margin: 8px 0 4px; }
+  .hint { color: #5f6368; font-size: 11px; margin: 4px 0; }
+</style>
+</head>
+<body>
+  <h3>Zoter Toolkit</h3>
+  <div class="hint">
+    Write <code>[@zotero:ABCD1234]</code>, <code>[@zotero:10.1038/...]</code>,
+    <code>[@zotero:pmid:12345678]</code>, or <code>[@zotero:?free text]</code>.
+    Optional locator: <code>[@zotero:ABCD1234|p. 42]</code>.
+  </div>
+
+  <button class="secondary" onclick="scan()">Scan tags</button>
+  <button class="primary" onclick="resolveAll()">Resolve all [@zotero:...]</button>
+  <button class="secondary" onclick="google.script.run.showSettings()">Settings…</button>
+
+  <div class="hint">After resolving, click <b>Zotero → Refresh</b> in the Zotero Connector to format citations and insert the bibliography.</div>
+
+  <div id="status">Idle.</div>
+
+<script>
+function setStatus(msg, cls) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = cls || '';
+}
+function scan() {
+  setStatus('Scanning…');
+  google.script.run
+    .withSuccessHandler(r => {
+      let s = r.tagCount + ' tag(s) found, ' + r.fieldCount + ' existing Zotero field(s).\n';
+      r.tags.forEach(t => { s += '  ' + t.raw + '  →  ' + t.kind + ':' + t.id + (t.locator ? ' | '+t.locator : '') + '\n'; });
+      setStatus(s, 'ok');
+    })
+    .withFailureHandler(e => setStatus('Error: ' + e.message, 'err'))
+    .uiScan();
+}
+function resolveAll() {
+  setStatus('Resolving…');
+  google.script.run
+    .withSuccessHandler(r => {
+      if (!r.ok) { setStatus('Error: ' + r.error, 'err'); return; }
+      let s = 'Resolved: ' + r.resolved + '   Failed: ' + r.failed + '\n';
+      r.items.forEach(it => {
+        s += (it.status === 'ok' ? '✓ ' : '✗ ') + it.raw + '  ' + (it.title || it.error || '') + '\n';
+      });
+      setStatus(s, r.failed ? 'err' : 'ok');
+    })
+    .withFailureHandler(e => setStatus('Error: ' + e.message, 'err'))
+    .uiResolveAll();
+}
+</script>
+</body>
+</html>

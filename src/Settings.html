@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+  body { font-family: Roboto, Arial, sans-serif; font-size: 13px; padding: 14px; }
+  label { display: block; margin: 10px 0 4px; font-weight: bold; }
+  input { width: 100%; padding: 6px; box-sizing: border-box; }
+  button { margin-top: 14px; padding: 8px 16px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  .hint { color: #5f6368; font-size: 11px; margin-top: 2px; }
+  #msg { margin-top: 10px; }
+</style>
+</head>
+<body>
+  <label>Zotero user ID</label>
+  <input id="uid" type="text" placeholder="e.g. 15276932">
+  <div class="hint">Find at zotero.org/settings/keys.</div>
+
+  <label>Zotero API key (read-only is fine)</label>
+  <input id="key" type="password">
+
+  <label>Default citation style</label>
+  <input id="style" type="text" value="apa">
+  <div class="hint">Used as a hint only. Zotero prompts for style on first Refresh.</div>
+
+  <button onclick="save()">Save</button>
+  <div id="msg"></div>
+
+<script>
+google.script.run.withSuccessHandler(s => {
+  document.getElementById('uid').value = s.zoteroUserId;
+  document.getElementById('key').value = s.zoteroApiKey;
+  document.getElementById('style').value = s.defaultStyle;
+}).getSettings();
+
+function save() {
+  const s = {
+    zoteroUserId: document.getElementById('uid').value,
+    zoteroApiKey: document.getElementById('key').value,
+    defaultStyle: document.getElementById('style').value
+  };
+  google.script.run
+    .withSuccessHandler(() => { document.getElementById('msg').textContent = 'Saved.'; })
+    .withFailureHandler(e => { document.getElementById('msg').textContent = 'Error: ' + e.message; })
+    .saveSettings(s);
+}
+</script>
+</body>
+</html>
