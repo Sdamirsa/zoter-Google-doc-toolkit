@@ -3,45 +3,85 @@
 <head>
 <base target="_top">
 <style>
-  body { font-family: Roboto, Arial, sans-serif; font-size: 13px; padding: 14px; }
-  label { display: block; margin: 10px 0 4px; font-weight: bold; }
+  body { font-family: Roboto, Arial, sans-serif; font-size: 13px; padding: 14px; color: #202124; }
+  label { display: block; margin: 10px 0 4px; font-weight: 600; }
   input { width: 100%; padding: 6px; box-sizing: border-box; }
   button { margin-top: 14px; padding: 8px 16px; background: #1a73e8; color: white; border: none; border-radius: 4px; cursor: pointer; }
+  button.secondary { background: #f1f3f4; color: #202124; border: 1px solid #dadce0; }
   .hint { color: #5f6368; font-size: 11px; margin-top: 2px; }
-  #msg { margin-top: 10px; }
+  #msg, #testMsg { margin-top: 10px; font-size: 12px; }
+  .ok { color: #137333; }
+  .err { color: #c5221f; }
 </style>
 </head>
 <body>
   <label>Zotero user ID</label>
   <input id="uid" type="text" placeholder="e.g. 15276932">
-  <div class="hint">Find at zotero.org/settings/keys.</div>
+  <div class="hint">Find at <a href="https://www.zotero.org/settings/keys" target="_blank">zotero.org/settings/keys</a>.</div>
 
   <label>Zotero API key (read-only is fine)</label>
-  <input id="key" type="password">
+  <input id="zkey" type="password">
 
-  <label>Default citation style</label>
+  <label>Zotero group IDs (optional, comma-separated)</label>
+  <input id="gids" type="text" placeholder="e.g. 5968208, 1234567">
+  <div class="hint">Add the numeric ID of any group library you cite from. Group items live at <code>zotero.org/groups/&lt;id&gt;/</code> and aren't found by user-library search alone.</div>
+
+  <label>Anthropic API key (for [@zotero:find])</label>
+  <input id="akey" type="password" placeholder="sk-ant-...">
+  <div class="hint">Get one at <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>. Optional — only needed for v0.2 find features.</div>
+
+  <label>Default citation style hint</label>
   <input id="style" type="text" value="apa">
-  <div class="hint">Used as a hint only. Zotero prompts for style on first Refresh.</div>
+  <div class="hint">Hint only. Zotero prompts for the actual style on first Refresh.</div>
 
   <button onclick="save()">Save</button>
+  <button class="secondary" onclick="testClaude()">Test Claude connection</button>
   <div id="msg"></div>
+  <div id="testMsg"></div>
 
 <script>
 google.script.run.withSuccessHandler(s => {
   document.getElementById('uid').value = s.zoteroUserId;
-  document.getElementById('key').value = s.zoteroApiKey;
+  document.getElementById('zkey').value = s.zoteroApiKey;
+  document.getElementById('gids').value = s.zoteroGroupIds || '';
+  document.getElementById('akey').value = s.anthropicApiKey;
   document.getElementById('style').value = s.defaultStyle;
 }).getSettings();
 
 function save() {
   const s = {
     zoteroUserId: document.getElementById('uid').value,
-    zoteroApiKey: document.getElementById('key').value,
+    zoteroApiKey: document.getElementById('zkey').value,
+    zoteroGroupIds: document.getElementById('gids').value,
+    anthropicApiKey: document.getElementById('akey').value,
     defaultStyle: document.getElementById('style').value
   };
   google.script.run
-    .withSuccessHandler(() => { document.getElementById('msg').textContent = 'Saved.'; })
-    .withFailureHandler(e => { document.getElementById('msg').textContent = 'Error: ' + e.message; })
+    .withSuccessHandler(() => { document.getElementById('msg').innerHTML = '<span class="ok">Saved.</span>'; })
+    .withFailureHandler(e => { document.getElementById('msg').innerHTML = '<span class="err">Error: ' + e.message + '</span>'; })
+    .saveSettings(s);
+}
+
+function testClaude() {
+  document.getElementById('testMsg').textContent = 'Testing…';
+  // Save first so the test uses the latest key
+  const s = {
+    zoteroUserId: document.getElementById('uid').value,
+    zoteroApiKey: document.getElementById('zkey').value,
+    zoteroGroupIds: document.getElementById('gids').value,
+    anthropicApiKey: document.getElementById('akey').value,
+    defaultStyle: document.getElementById('style').value
+  };
+  google.script.run
+    .withSuccessHandler(() => {
+      google.script.run
+        .withSuccessHandler(r => {
+          document.getElementById('testMsg').innerHTML =
+            (r.ok ? '<span class="ok">✓ ' : '<span class="err">✗ ') + r.message + '</span>';
+        })
+        .withFailureHandler(e => { document.getElementById('testMsg').innerHTML = '<span class="err">Error: ' + e.message + '</span>'; })
+        .testAnthropic();
+    })
     .saveSettings(s);
 }
 </script>

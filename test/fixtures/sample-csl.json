@@ -1,0 +1,16 @@
+{
+  "id": "ABCD1234",
+  "type": "article-journal",
+  "title": "A representative paper title used for chunker testing",
+  "author": [
+    { "family": "Smith", "given": "Jane A." },
+    { "family": "Doe", "given": "John B." }
+  ],
+  "issued": { "date-parts": [[2020, 6, 15]] },
+  "container-title": "Journal of Plausible Results",
+  "volume": "42",
+  "issue": "7",
+  "page": "1234-1256",
+  "DOI": "10.1234/jpr.2020.42.1234",
+  "abstract": "This is a moderately long abstract used to make the field code large enough that the chunker has to split it across multiple NamedRange names. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."
+}

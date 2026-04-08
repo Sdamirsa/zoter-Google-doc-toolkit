@@ -3,63 +3,486 @@
 <head>
 <base target="_top">
 <style>
-  body { font-family: Roboto, Arial, sans-serif; font-size: 13px; padding: 10px; }
-  button { display: block; width: 100%; padding: 8px; margin: 6px 0; cursor: pointer; }
+  body { font-family: Roboto, Arial, sans-serif; font-size: 13px; padding: 10px; color: #202124; }
+  h3 { margin: 12px 0 4px; }
+  h4 { margin: 14px 0 6px; font-size: 12px; text-transform: uppercase; color: #5f6368; }
+  button { display: block; width: 100%; padding: 8px; margin: 6px 0; cursor: pointer; font-size: 13px; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
   .primary { background: #1a73e8; color: white; border: none; border-radius: 4px; }
   .secondary { background: #f1f3f4; border: 1px solid #dadce0; border-radius: 4px; }
-  #status { margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; min-height: 40px; white-space: pre-wrap; font-family: monospace; font-size: 11px; }
+  #status, #findStatus { margin-top: 8px; padding: 8px; background: #f8f9fa; border-radius: 4px; min-height: 28px; white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; }
   .ok { color: #137333; }
   .err { color: #c5221f; }
-  h3 { margin: 8px 0 4px; }
   .hint { color: #5f6368; font-size: 11px; margin: 4px 0; }
+  .ref { border-left: 3px solid #dadce0; padding: 6px 8px; margin: 6px 0; background: #fafbfc; border-radius: 0 4px 4px 0; }
+  .ref.orig { border-left-color: #137333; }
+  .ref.rev { border-left-color: #1a73e8; }
+  .ref.contra { border-left-color: #c5221f; }
+  .ref-title { font-weight: 600; font-size: 12px; }
+  .ref-meta { font-size: 11px; color: #5f6368; margin: 2px 0; }
+  .ref-just { font-style: italic; font-size: 11px; margin: 4px 0; color: #3c4043; }
+  .ref a { color: #1a73e8; text-decoration: none; }
+  .ref a:hover { text-decoration: underline; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 600; }
+  .badge-orig { background: #e6f4ea; color: #137333; }
+  .badge-rev { background: #e8f0fe; color: #1a73e8; }
+  .badge-contra { background: #fce8e6; color: #c5221f; }
+  .badge-inserted { background: #e6f4ea; color: #137333; }
+  .badge-noinsert { background: #fef7e0; color: #b06000; }
+  .tag-card { border: 1px solid #dadce0; border-left: 3px solid #1a73e8; padding: 10px 12px; margin: 12px 0; border-radius: 4px; background: white; }
+  .tag-header { font-size: 11px; color: #5f6368; display: flex; justify-content: space-between; align-items: baseline; }
+  .excerpt { font-size: 11px; color: #3c4043; font-style: italic; margin: 4px 0 8px; padding: 4px 8px; background: #f8f9fa; border-radius: 3px; }
+  .inline-text { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10px; color: #5f6368; margin-top: 6px; padding-top: 6px; border-top: 1px dashed #dadce0; word-break: break-all; }
+  .cost-line { font-size: 10px; color: #5f6368; margin-top: 4px; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .total-cost { display: inline-block; padding: 2px 8px; background: #e8f0fe; color: #1a73e8; border-radius: 8px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+  .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #dadce0; border-top-color: #1a73e8; border-radius: 50%; animation: spin 1s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  details summary { cursor: pointer; font-size: 11px; color: #5f6368; }
+  /* Progress bars */
+  .progress { margin: 6px 0; display: none; }
+  .progress.active { display: block; }
+  .progress-bar-outer { background: #f1f3f4; height: 8px; border-radius: 4px; overflow: hidden; }
+  .progress-bar-inner { background: #1a73e8; height: 100%; width: 0; transition: width 0.25s ease; }
+  .progress-label { font-size: 11px; color: #5f6368; margin-top: 4px; }
+  .progress-label .count { font-weight: 600; color: #202124; }
+  .progress-actions { margin-top: 6px; display: flex; gap: 6px; }
+  .progress-actions .mini { flex: 1; width: auto; margin: 0; padding: 4px 8px; font-size: 11px; background: #f1f3f4; border: 1px solid #dadce0; border-radius: 4px; color: #202124; }
+  .progress-actions .mini.stop { background: #fce8e6; border-color: #f4c7c3; color: #c5221f; }
+  .progress-actions .mini:disabled { opacity: 0.5; cursor: not-allowed; }
+  .progress-actions .mini.pending { background: #fef7e0; border-color: #feefc3; color: #b06000; }
 </style>
 </head>
 <body>
-  <h3>Zoter Toolkit</h3>
+  <h3>My Happy Zoter</h3>
   <div class="hint">
-    Write <code>[@zotero:ABCD1234]</code>, <code>[@zotero:10.1038/...]</code>,
-    <code>[@zotero:pmid:12345678]</code>, or <code>[@zotero:?free text]</code>.
-    Optional locator: <code>[@zotero:ABCD1234|p. 42]</code>.
+    Tags: <code>[@zotero:KEY]</code>, <code>[@zotero:DOI]</code>,
+    <code>[@zotero:pmid:N]</code>, <code>[@zotero:?query]</code>,
+    <code>[@zotero:find]</code>. Locator: <code>|p. 42</code>.
   </div>
 
-  <button class="secondary" onclick="scan()">Scan tags</button>
-  <button class="primary" onclick="resolveAll()">Resolve all [@zotero:...]</button>
-  <button class="secondary" onclick="google.script.run.showSettings()">Settings…</button>
-
-  <div class="hint">After resolving, click <b>Zotero → Refresh</b> in the Zotero Connector to format citations and insert the bibliography.</div>
-
+  <h4>Resolve known citations</h4>
+  <button id="btnScan" class="secondary" onclick="scan()">Scan tags</button>
+  <button id="btnResolve" class="primary" onclick="resolveAll()">Resolve all [@zotero:...]</button>
+  <button id="btnDiagnose" class="secondary" onclick="diagnose()">Diagnose Zotero connection</button>
+  <div id="resolveProgress" class="progress">
+    <div class="progress-bar-outer"><div id="resolveBar" class="progress-bar-inner"></div></div>
+    <div id="resolveLabel" class="progress-label"></div>
+    <div class="progress-actions">
+      <button class="mini" onclick="requestSkip('resolve')">Skip current</button>
+      <button class="mini stop" onclick="requestStop('resolve')">Stop &amp; finalize</button>
+    </div>
+  </div>
   <div id="status">Idle.</div>
 
+  <h4>Find new citations <span id="findTotalCost" class="total-cost" style="display:none">$0.0000</span></h4>
+  <div class="hint">Each <code>[@zotero:find]</code> tag is replaced inline with three hyperlinked references: one original supporting, one review supporting, and one questioning (for balance). Review them and decide what to keep — these are research suggestions, not finalized Zotero citations.</div>
+  <button id="btnFind" class="primary" onclick="findAll()">Find refs for [@zotero:find] tags</button>
+  <div id="findProgress" class="progress">
+    <div class="progress-bar-outer"><div id="findBar" class="progress-bar-inner"></div></div>
+    <div id="findLabel" class="progress-label"></div>
+    <div class="progress-actions">
+      <button class="mini" onclick="requestSkip('find')">Skip current</button>
+      <button class="mini stop" onclick="requestStop('find')">Stop</button>
+    </div>
+  </div>
+  <div id="findStatus">Idle.</div>
+  <div id="findResults"></div>
+
+  <h4 style="margin-top:18px">Settings</h4>
+  <button class="secondary" onclick="google.script.run.showSettings()">Open settings…</button>
+  <div class="hint">After Resolve or Insert, click <b>Zotero → Refresh</b> in the Zotero Connector. Zotero will show a native <b>"Zotero needs to convert this document. Continue?"</b> dialog — click <b>Continue</b>. Zotero then replaces the ITEM blocks with formatted citations and adds the bibliography.</div>
+
 <script>
-function setStatus(msg, cls) {
-  const el = document.getElementById('status');
+/* ------ generic helpers ------ */
+
+function setStatus(id, msg, cls) {
+  const el = document.getElementById(id);
   el.textContent = msg;
   el.className = cls || '';
 }
+
+function runServer(fn, ...args) {
+  return new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler(reject)
+      [fn](...args);
+  });
+}
+
+function disable(ids, disabled) {
+  ids.forEach(id => {
+    const b = document.getElementById(id);
+    if (b) b.disabled = !!disabled;
+  });
+}
+
+function showProgress(prefix) {
+  document.getElementById(prefix + 'Progress').classList.add('active');
+}
+function hideProgress(prefix) {
+  document.getElementById(prefix + 'Progress').classList.remove('active');
+}
+function setProgress(prefix, done, total, label) {
+  const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
+  document.getElementById(prefix + 'Bar').style.width = pct + '%';
+  const lbl = document.getElementById(prefix + 'Label');
+  const countSpan = '<span class="count">' + done + '/' + total + '</span>';
+  lbl.innerHTML = countSpan + (label ? ' &nbsp;·&nbsp; ' + esc(label) : '');
+}
+
+/* ------ Stop/Skip flags ------
+ *
+ * stopFlag[prefix]: if set during a loop, the loop exits after the
+ *   current in-flight server call returns. Partial results are finalized
+ *   (Resolve: transfer markers are still added, Find: cards already
+ *   rendered stay). User can re-click the primary button to continue.
+ *
+ * skipFlag[prefix]: if set during a loop, the NEXT server call is
+ *   suppressed and its would-be result is counted as "skipped" in the
+ *   summary. For Resolve, any mutations already applied stay (we cannot
+ *   cancel an in-flight HTTP call). For Find, the skipped call's
+ *   candidates are discarded and not rendered.
+ *
+ * Buttons reflect these states so the user gets immediate "click
+ * received, will act after current call" feedback — otherwise it looks
+ * like the button did nothing while the 10-30s Claude call is pending.
+ */
+const loopState = { resolve: { stop: false, skip: false }, find: { stop: false, skip: false } };
+
+function requestStop(prefix) {
+  loopState[prefix].stop = true;
+  const btns = document.querySelectorAll('#' + prefix + 'Progress .mini');
+  btns.forEach(b => { b.disabled = true; if (b.classList.contains('stop')) b.textContent = 'Stopping after current…'; });
+}
+
+function requestSkip(prefix) {
+  loopState[prefix].skip = true;
+  const btn = document.querySelector('#' + prefix + 'Progress .mini:not(.stop)');
+  if (btn) { btn.classList.add('pending'); btn.textContent = 'Skipping after current…'; }
+}
+
+function resetLoopState(prefix) {
+  loopState[prefix].stop = false;
+  loopState[prefix].skip = false;
+  const actions = document.querySelectorAll('#' + prefix + 'Progress .mini');
+  actions.forEach(b => { b.disabled = false; b.classList.remove('pending'); });
+  const stopBtn = document.querySelector('#' + prefix + 'Progress .mini.stop');
+  if (stopBtn) stopBtn.textContent = prefix === 'resolve' ? 'Stop & finalize' : 'Stop';
+  const skipBtn = document.querySelector('#' + prefix + 'Progress .mini:not(.stop)');
+  if (skipBtn) skipBtn.textContent = 'Skip current';
+}
+
+function consumeSkip(prefix) {
+  const was = loopState[prefix].skip;
+  loopState[prefix].skip = false;
+  const btn = document.querySelector('#' + prefix + 'Progress .mini:not(.stop)');
+  if (btn) { btn.classList.remove('pending'); btn.textContent = 'Skip current'; }
+  return was;
+}
+
+/* ------ Scan / Diagnose (unchanged, no progress needed) ------ */
+
 function scan() {
-  setStatus('Scanning…');
+  setStatus('status', 'Scanning…');
   google.script.run
     .withSuccessHandler(r => {
       let s = r.tagCount + ' tag(s) found, ' + r.fieldCount + ' existing Zotero field(s).\n';
-      r.tags.forEach(t => { s += '  ' + t.raw + '  →  ' + t.kind + ':' + t.id + (t.locator ? ' | '+t.locator : '') + '\n'; });
-      setStatus(s, 'ok');
+      r.tags.forEach(t => {
+        s += '  ' + t.raw + '  →  ' + t.kind + (t.id !== t.kind ? ':' + t.id : '') +
+             (t.locator ? ' | ' + t.locator : '') +
+             (t.mode && t.mode !== 'any' ? ' [' + t.mode + ']' : '') + '\n';
+      });
+      setStatus('status', s, 'ok');
     })
-    .withFailureHandler(e => setStatus('Error: ' + e.message, 'err'))
+    .withFailureHandler(e => setStatus('status', 'Error: ' + e.message, 'err'))
     .uiScan();
 }
-function resolveAll() {
-  setStatus('Resolving…');
+
+function diagnose() {
+  setStatus('status', 'Probing libraries…');
   google.script.run
     .withSuccessHandler(r => {
-      if (!r.ok) { setStatus('Error: ' + r.error, 'err'); return; }
-      let s = 'Resolved: ' + r.resolved + '   Failed: ' + r.failed + '\n';
-      r.items.forEach(it => {
-        s += (it.status === 'ok' ? '✓ ' : '✗ ') + it.raw + '  ' + (it.title || it.error || '') + '\n';
-      });
-      setStatus(s, r.failed ? 'err' : 'ok');
+      let s = 'Zotero user ID: ' + r.zoteroUserId + '\n';
+      s += 'Zotero group IDs: ' + r.zoteroGroupIds + '\n';
+      s += 'Zotero API key: ' + (r.zoteroApiKeySet ? 'set' : 'NOT SET') + '\n';
+      s += 'Anthropic key: ' + (r.anthropicApiKeySet ? 'set' : 'not set') + '\n';
+      s += 'Default style: ' + r.defaultStyle + '\n';
+      s += 'Will search: ' + r.librariesSearched + '\n';
+      if (r.libraryProbes && r.libraryProbes.length) {
+        s += '\nLibrary access probes:\n';
+        r.libraryProbes.forEach(p => {
+          s += '  ' + (p.ok ? '✓ ' : '✗ ') + p.lib + '  ' + (p.ok ? '(sample: ' + p.sample + ')' : p.error) + '\n';
+        });
+      } else {
+        s += '\n(No probes — set user ID/group ID and API key first.)\n';
+      }
+      setStatus('status', s, 'ok');
     })
-    .withFailureHandler(e => setStatus('Error: ' + e.message, 'err'))
-    .uiResolveAll();
+    .withFailureHandler(e => setStatus('status', 'Error: ' + e.message, 'err'))
+    .uiDiagnose();
+}
+
+/* ------ Resolve: streaming loop with progress bar ------ */
+
+async function resolveAll() {
+  disable(['btnResolve', 'btnScan', 'btnDiagnose', 'btnFind'], true);
+  resetLoopState('resolve');
+  setStatus('status', '');
+  try {
+    await runServer('uiResolveClearFailed');
+    const scanResult = await runServer('uiScan');
+    const resolvable = scanResult.tags.filter(t => t.kind !== 'find');
+    if (!resolvable.length) {
+      setStatus('status', 'No [@zotero:...] tags to resolve.', 'ok');
+      return;
+    }
+    const total = resolvable.length;
+    let resolved = 0;
+    let failed = 0;
+    let skipped = 0;
+    let stoppedEarly = false;
+    const items = [];
+
+    showProgress('resolve');
+    setProgress('resolve', 0, total, 'Starting…');
+
+    for (let i = 0; i < total; i++) {
+      const nextIdx = i + 1;
+      setProgress('resolve', i, total, 'Resolving tag ' + nextIdx + '/' + total + '…');
+      let r;
+      try {
+        r = await runServer('uiResolveNext');
+      } catch (e) {
+        setStatus('status', 'Error: ' + (e.message || e), 'err');
+        return;
+      }
+      if (!r.ok) {
+        setStatus('status', 'Error: ' + r.error, 'err');
+        return;
+      }
+
+      const wasSkipped = consumeSkip('resolve');
+      if (r.processed) {
+        if (wasSkipped) {
+          skipped++;
+          items.push({ ...r.processed, status: 'skipped' });
+          setProgress('resolve', nextIdx, total,
+            '↷ Skipped: ' + r.processed.raw +
+            ' (mutation was already committed before you clicked Skip)');
+        } else if (r.processed.status === 'ok') {
+          resolved++;
+          items.push(r.processed);
+          setProgress('resolve', nextIdx, total,
+            '✓ ' + r.processed.raw + (r.processed.title ? ' — ' + r.processed.title : ''));
+        } else {
+          failed++;
+          items.push(r.processed);
+          setProgress('resolve', nextIdx, total,
+            '✗ ' + r.processed.raw + ' — ' + (r.processed.error || ''));
+        }
+      }
+
+      if (loopState.resolve.stop) { stoppedEarly = true; break; }
+      if (r.done) break;
+    }
+
+    // Always add the transfer markers to whatever's been resolved so far,
+    // even on Stop — so the partial document is still valid for Zotero
+    // Refresh. The user can click Resolve again later to continue.
+    setProgress('resolve', total, total, 'Adding transfer markers…');
+    const markers = await runServer('uiEnsureMarkers');
+
+    // Final summary
+    let header = 'Resolved: ' + resolved + '   Failed: ' + failed;
+    if (skipped) header += '   Skipped: ' + skipped;
+    if (stoppedEarly) header += '   (stopped early)';
+    let s = header + '\n';
+    items.forEach(it => {
+      const mark = it.status === 'ok' ? '✓ ' : (it.status === 'skipped' ? '↷ ' : '✗ ');
+      s += mark + it.raw + ' (¶' + it.paragraph + ')  ' + (it.title || it.error || '') + '\n';
+    });
+    if (markers && !markers.ok) s += '\n⚠ Transfer markers error: ' + markers.error;
+    s += '\nNow click Zotero → Refresh in the Connector.';
+    setStatus('status', s, failed ? 'err' : 'ok');
+  } finally {
+    hideProgress('resolve');
+    resetLoopState('resolve');
+    disable(['btnResolve', 'btnScan', 'btnDiagnose', 'btnFind'], false);
+  }
+}
+
+/* ------ Find: streaming loop with progress bar + incremental render ------ */
+
+async function findAll() {
+  disable(['btnResolve', 'btnScan', 'btnDiagnose', 'btnFind'], true);
+  resetLoopState('find');
+  resetFindSessionCost();
+  document.getElementById('findResults').innerHTML = '';
+  setStatus('findStatus', '');
+  try {
+    await runServer('uiFindClearCache');
+    const scanResult = await runServer('uiScan');
+    const findTags = scanResult.tags.filter(t => t.kind === 'find');
+    if (!findTags.length) {
+      setStatus('findStatus', 'No [@zotero:find] tags in document.', 'ok');
+      return;
+    }
+    const total = findTags.length;
+    let done = 0;
+    let skipped = 0;
+    let stoppedEarly = false;
+
+    showProgress('find');
+    setProgress('find', 0, total, 'Starting…');
+
+    for (let i = 0; i < total; i++) {
+      const nextIdx = i + 1;
+      setProgress('find', i, total,
+        'Searching tag ' + nextIdx + '/' + total + ' with Claude + web_search (10–30 s)…');
+      let r;
+      try {
+        r = await runServer('uiFindNext');
+      } catch (e) {
+        setStatus('findStatus', 'Error: ' + (e.message || e), 'err');
+        return;
+      }
+      if (!r.ok) {
+        setStatus('findStatus', 'Error: ' + r.error, 'err');
+        return;
+      }
+
+      const wasSkipped = consumeSkip('find');
+      if (r.processed) {
+        // Cost is accumulated whether skipped or not — Anthropic charged us.
+        if (r.processed.cost) addToFindSessionCost(r.processed.cost);
+        if (wasSkipped) {
+          skipped++;
+          setProgress('find', nextIdx, total,
+            '↷ Skipped (call already charged): ' + r.processed.raw);
+        } else {
+          done++;
+          appendFindResult(r.processed);
+          const refCount = (r.processed.refs || []).length;
+          const insertedMark = r.processed.inserted ? '✓ ' : '✗ ';
+          setProgress('find', nextIdx, total,
+            insertedMark + r.processed.raw + ' — ' + refCount + ' ref(s)');
+        }
+      }
+
+      if (loopState.find.stop) { stoppedEarly = true; break; }
+      if (r.done) break;
+    }
+
+    let msg = done + ' tag(s) processed';
+    if (skipped) msg += ', ' + skipped + ' skipped';
+    if (stoppedEarly) msg += ' (stopped early)';
+    msg += '.';
+    setStatus('findStatus', msg, 'ok');
+  } finally {
+    hideProgress('find');
+    resetLoopState('find');
+    disable(['btnResolve', 'btnScan', 'btnDiagnose', 'btnFind'], false);
+  }
+}
+
+/* ------ Session-level cost tracking ------ */
+
+let findSessionCost = 0;
+
+function addToFindSessionCost(delta) {
+  findSessionCost += (delta || 0);
+  const el = document.getElementById('findTotalCost');
+  if (findSessionCost > 0) {
+    el.style.display = 'inline-block';
+    el.textContent = 'Session: $' + findSessionCost.toFixed(4);
+  }
+}
+
+function resetFindSessionCost() {
+  findSessionCost = 0;
+  const el = document.getElementById('findTotalCost');
+  el.style.display = 'none';
+  el.textContent = '$0.0000';
+}
+
+/* ------ Per-tag card renderer (new 3-ref layout) ------ */
+
+function appendFindResult(tag) {
+  const root = document.getElementById('findResults');
+  const card = document.createElement('div');
+  card.className = 'tag-card';
+
+  let html = '';
+  // Header line: raw tag + inserted badge + paragraph
+  html += '<div class="tag-header">';
+  html += '<span><b>' + esc(tag.raw) + '</b> &nbsp;·&nbsp; ¶' + tag.paragraph + '</span>';
+  if (tag.inserted) {
+    html += '<span class="badge badge-inserted">✓ inserted</span>';
+  } else if (tag.error) {
+    html += '<span class="badge badge-noinsert">✗ not inserted</span>';
+  }
+  html += '</div>';
+
+  // Context excerpt
+  html += '<div class="excerpt">' + esc(tag.excerpt || '') + '…</div>';
+
+  if (tag.error) {
+    html += '<details><summary class="err">Error — show details</summary><pre>' + esc(tag.error) + '</pre></details>';
+  } else if (!tag.refs || !tag.refs.length) {
+    html += '<div class="hint">No references returned.</div>';
+  } else {
+    // Render the three refs in order: orig, rev, contra
+    tag.refs.forEach(ref => {
+      const badgeClass = 'badge-' + ref.kind;
+      const badgeLabel = ref.kind === 'orig' ? 'original ✓'
+                       : ref.kind === 'rev'  ? 'review ✓'
+                       :                       'contradicts ✗';
+      html += '<div class="ref ' + ref.kind + '">';
+      html += '<div class="ref-title">';
+      if (ref.url) {
+        html += '<a href="' + esc(ref.url) + '" target="_blank" rel="noopener">' + esc(ref.title) + '</a>';
+      } else {
+        html += esc(ref.title);
+      }
+      html += '</div>';
+      html += '<div class="ref-meta">';
+      html += '<span class="badge ' + badgeClass + '">' + badgeLabel + '</span>&nbsp;';
+      html += esc(ref.author) + (ref.year != null ? ' ' + ref.year : '');
+      if (ref.venue) html += ' · <i>' + esc(ref.venue) + '</i>';
+      if (ref.doi) html += ' · DOI: ' + esc(ref.doi);
+      html += '</div>';
+      if (ref.justification) {
+        html += '<div class="ref-just">' + esc(ref.justification) + '</div>';
+      }
+      html += '</div>';
+    });
+
+    // The exact inline text we pasted into the doc
+    if (tag.inlineText) {
+      html += '<div class="inline-text">inserted: ' + esc(tag.inlineText) + '</div>';
+    }
+  }
+
+  // Per-call cost line
+  if (tag.cost != null) {
+    const u = tag.usage || {};
+    const searches = (u.server_tool_use && u.server_tool_use.web_search_requests) || 0;
+    const inTok = u.input_tokens || 0;
+    const outTok = u.output_tokens || 0;
+    html += '<div class="cost-line">Claude: $' + tag.cost.toFixed(4) +
+            ' · ' + inTok + ' in / ' + outTok + ' out · ' + searches + ' web_search' +
+            (searches === 1 ? '' : 'es') + '</div>';
+  }
+
+  card.innerHTML = html;
+  root.appendChild(card);
+}
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
 }
 </script>
 </body>
